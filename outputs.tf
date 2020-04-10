@@ -24,5 +24,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 */
 
 output "master_dns" {
-  value = "${aws_spot_instance_request.master.public_dns}"
+  value = aws_spot_instance_request.master.public_dns
 }
+
