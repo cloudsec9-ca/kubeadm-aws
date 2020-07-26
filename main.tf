@@ -193,12 +193,23 @@ resource "aws_s3_bucket_public_access_block" "s3-bucket" {
   restrict_public_buckets = true
 }
 
+data "template_file" "external-dns-manifest" {
+  count    = var.external-dns-enabled
+  template = file("manifests/external-dns.yaml.tmpl")
+  vars = {
+    cluster_name         = var.cluster-name
+    nginx_ingress_domain = var.nginx-ingress-domain
+  }
+}
+
 resource "aws_s3_bucket_object" "external-dns-manifest" {
   count  = var.external-dns-enabled
   bucket = aws_s3_bucket.s3-bucket.id
   key    = "manifests/external-dns.yaml"
-  source = "manifests/external-dns.yaml"
-  etag   = filemd5("manifests/external-dns.yaml")
+  content = data.template_file.external-dns-manifest[0].rendered
+  etag = md5(
+    data.template_file.external-dns-manifest[0].rendered,
+  )
 }
 
 resource "aws_s3_bucket_object" "ebs-storage-class-manifest" {
@@ -476,9 +487,23 @@ resource "aws_iam_policy" "route53-policy" {
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Effect": "Allow",
-            "Action": ["route53:*"],
-            "Resource": "*"
+          "Effect": "Allow",
+          "Action": [
+            "route53:ChangeResourceRecordSets"
+          ],
+          "Resource": [
+            "arn:aws:route53:::hostedzone/*"
+          ]
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "route53:ListHostedZones",
+            "route53:ListResourceRecordSets"
+          ],
+          "Resource": [
+            "*"
+          ]
         }
     ]
 }

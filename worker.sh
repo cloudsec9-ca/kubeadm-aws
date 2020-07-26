@@ -43,11 +43,12 @@ service procps start
 
 # Compute cert hash from backup if available
 if [[ "${backupenabled}" == "1" ]]; then
-    while aws s3 ls s3://${s3bucket}; [ $? -ne 0 ]; do
+    until aws s3 ls s3://${s3bucket}/pki; do
         # wait until master finally uploads its certs to the S3 bucket
+        echo "Waiting for master node to create folder at s3://${s3bucket}/pki..."
         sleep 15
     done
-    latest_backup=$(aws s3api list-objects --bucket ${s3bucket} --prefix etcd-backups --query 'reverse(sort_by(Contents,&LastModified))[0]' | jq -rc .Key)
+    latest_backup=$(aws s3api list-objects --bucket ${s3bucket} --prefix pki --query 'reverse(sort_by(Contents,&LastModified))[0]' | jq -rc .Key)
     old_instance_id=$(echo $latest_backup | cut -d'/' -f2)
     aws s3 cp s3://${s3bucket}/pki/$old_instance_id/ca.crt /tmp/ca.crt
     discovery_hash=$(openssl x509 -pubkey -in /tmp/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //')
