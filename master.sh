@@ -124,7 +124,7 @@ rm -rf linux-amd64 helm-*
 if [ -f /tmp/fresh-cluster ]; then
   # Set up networking
   su -c 'kubectl apply -f https://docs.projectcalico.org/v3.14/manifests/calico.yaml' ubuntu
-  sleep 300 # Give Calico several minutes to start up
+  sleep 180 # Give Calico some time to start up
 
   # Install cert-manager (https://cert-manager.io/docs/installation/kubernetes/)
   if [[ "${certmanagerenabled}" == "1" ]]; then
