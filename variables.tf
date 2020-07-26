@@ -79,7 +79,7 @@ variable "master-instance-type" {
 }
 
 variable "master-spot-price" {
-  default     = "0.013"
+  default     = "0.0063"
   description = "The maximum spot bid for the master node"
 }
 
