@@ -371,6 +371,31 @@ EOF
 
 }
 
+# https://github.com/terraform-providers/terraform-provider-aws/issues/6109
+# We grant the instance the ability to change the CPU credit specification as Terraform/AWS API can't do it.
+# This will be disabled in the user_data script for the master node.
+resource "aws_iam_policy" "cpu-credit" {
+  name        = "${var.cluster-name}-cpu-credit-policy"
+  path        = "/"
+  description = "Policy for ${var.cluster-name} cluster to for changing burstable EC2 CPU credit specification"
+
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:ModifyInstanceCreditSpecification"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+EOF
+
+}
+
 resource "aws_iam_role_policy_attachment" "autoscaling" {
   count      = var.cluster-autoscaler-enabled
   role       = aws_iam_role.role.name
@@ -380,6 +405,11 @@ resource "aws_iam_role_policy_attachment" "autoscaling" {
 resource "aws_iam_role_policy_attachment" "cluster-policy" {
   role       = aws_iam_role.role.name
   policy_arn = aws_iam_policy.cluster-policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "cpu-credit" {
+  role       = aws_iam_role.role.name
+  policy_arn = aws_iam_policy.cpu-credit.arn
 }
 
 resource "aws_iam_policy" "s3-bucket-policy" {
