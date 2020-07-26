@@ -275,7 +275,7 @@ data "template_file" "worker-userdata" {
 data "aws_ami" "latest_ami" {
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-instance/ubuntu-bionic-18.04-amd64-server-*"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"]
   }
 
   most_recent = true
@@ -461,6 +461,10 @@ resource "aws_spot_instance_request" "master" {
   wait_for_fulfillment   = true
   private_ip             = "10.0.100.4"
 
+  credit_specification {
+    cpu_credits = "standard"
+  }
+
   depends_on = [aws_internet_gateway.gw]
 
   tags = {
@@ -490,6 +494,9 @@ resource "aws_launch_template" "worker" {
     spot_options {
       max_price = var.worker-spot-price
     }
+  }
+  credit_specification {
+    cpu_credits = "standard"
   }
 }
 

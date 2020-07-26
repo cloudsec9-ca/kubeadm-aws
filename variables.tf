@@ -69,27 +69,27 @@ variable "az" {
 }
 
 variable "kubernetes-version" {
-  default     = "1.13.4"
+  default     = "1.18.0"
   description = "Which version of Kubernetes to install"
 }
 
 variable "master-instance-type" {
-  default     = "m1.small"
+  default     = "t3.small"
   description = "Which EC2 instance type to use for the master nodes"
 }
 
 variable "master-spot-price" {
-  default     = "0.01"
+  default     = "0.013"
   description = "The maximum spot bid for the master node"
 }
 
 variable "worker-instance-type" {
-  default     = "m1.small"
+  default     = "t3.micro"
   description = "Which EC2 instance type to use for the worker nodes"
 }
 
 variable "worker-spot-price" {
-  default     = "0.01"
+  default     = "0.0031"
   description = "The maximum spot bid for worker nodes"
 }
 

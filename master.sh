@@ -4,7 +4,7 @@
 systemctl stop snapd snapd.socket lxcfs snap.amazon-ssm-agent.amazon-ssm-agent
 systemctl disable snapd snapd.socket lxcfs snap.amazon-ssm-agent.amazon-ssm-agent
 
-# Disable swap to make K8S happy
+# Disable swap to make K8S happy (swap does not seem to be used in t3.small)
 swapoff -a
 sed -i '/swap/d' /etc/fstab
 
@@ -16,8 +16,15 @@ apt-get update
 apt-get install -y kubelet=${k8sversion}-00 kubeadm=${k8sversion}-00 kubectl=${k8sversion}-00 awscli jq docker.io
 apt-mark hold kubelet kubeadm kubectl docker.io
 
+# https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#letting-iptables-see-bridged-traffic
+modprobe br_netfilter
+
+# Pass bridged IPv4 traffic to iptables chains (required by Flannel like the above cidr setting)
+echo "net.bridge.bridge-nf-call-iptables = 1" > /etc/sysctl.d/60-flannel.conf
+service procps start
+
 # Install etcdctl for the version of etcd we're running
-ETCD_VERSION=$(kubeadm config images list | grep etcd | cut -d':' -f2)
+ETCD_VERSION=$(kubeadm config images list | grep etcd | cut -d':' -f2 | cut -d'-' -f1)
 wget "https://github.com/coreos/etcd/releases/download/v$${ETCD_VERSION}/etcd-v$${ETCD_VERSION}-linux-amd64.tar.gz"
 tar xvf "etcd-v$${ETCD_VERSION}-linux-amd64.tar.gz"
 mv "etcd-v$${ETCD_VERSION}-linux-amd64/etcdctl" /usr/local/bin/
@@ -50,7 +57,7 @@ mkdir /mnt/kubelet
 echo 'KUBELET_EXTRA_ARGS="--root-dir=/mnt/kubelet --cloud-provider=aws"' > /etc/default/kubelet
 
 cat >init-config.yaml <<EOF
-apiVersion: kubeadm.k8s.io/v1alpha3
+apiVersion: kubeadm.k8s.io/v1beta2
 kind: InitConfiguration
 bootstrapTokens:
 - groups:
@@ -61,7 +68,7 @@ nodeRegistration:
   name: "$(hostname -f)"
   taints: []
 ---
-apiVersion: kubeadm.k8s.io/v1alpha3
+apiVersion: kubeadm.k8s.io/v1beta2
 kind: ClusterConfiguration
 apiServerExtraArgs:
   cloud-provider: aws
@@ -99,32 +106,28 @@ else
   touch /tmp/fresh-cluster
 fi
 
-# Pass bridged IPv4 traffic to iptables chains (required by Flannel like the above cidr setting)
-echo "net.bridge.bridge-nf-call-iptables = 1" > /etc/sysctl.d/60-flannel.conf
-service procps start
-
 # Set up kubectl for the ubuntu user
 mkdir -p /home/ubuntu/.kube && cp -i /etc/kubernetes/admin.conf /home/ubuntu/.kube/config && chown -R ubuntu. /home/ubuntu/.kube
 echo 'source <(kubectl completion bash)' >> /home/ubuntu/.bashrc
 
+
 # Install helm
-wget https://storage.googleapis.com/kubernetes-helm/helm-v2.12.0-linux-amd64.tar.gz
-tar xvf helm-v2.12.0-linux-amd64.tar.gz
+wget https://get.helm.sh/helm-v3.2.4-linux-amd64.tar.gz
+tar xvf helm-v3.2.4-linux-amd64.tar.gz
 mv linux-amd64/helm /usr/local/bin/
 rm -rf linux-amd64 helm-*
 
 if [ -f /tmp/fresh-cluster ]; then
-  su -c 'kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/13a990bb716c82a118b8e825b78189dcfbfb2f1e/Documentation/kube-flannel.yml' ubuntu
+  # Set up networking
+  su -c 'kubectl apply -f https://docs.projectcalico.org/v3.14/manifests/calico.yaml' ubuntu
+  sleep 300 # Give Calico several minutes to start up
 
-  # Set up helm
-  su -c 'kubectl create serviceaccount tiller --namespace=kube-system' ubuntu
-  su -c 'kubectl create clusterrolebinding tiller-admin --serviceaccount=kube-system:tiller --clusterrole=cluster-admin' ubuntu
-  su -c 'helm init --service-account=tiller' ubuntu
-
-  # Install cert-manager
+  # Install cert-manager (https://cert-manager.io/docs/installation/kubernetes/)
   if [[ "${certmanagerenabled}" == "1" ]]; then
-    sleep 60 # Give Tiller a minute to start up
-    su -c 'helm install --name cert-manager --namespace cert-manager --version 0.5.2 stable/cert-manager --set createCustomResource=false && helm upgrade --install --namespace cert-manager --version 0.5.2 cert-manager stable/cert-manager --set createCustomResource=true' ubuntu
+    su -c 'kubectl create namespace cert-manager' ubuntu
+    su -c 'helm repo add jetstack https://charts.jetstack.io' ubuntu
+    su -c 'helm repo update' ubuntu
+    su -c 'helm install cert-manager jetstack/cert-manager --namespace cert-manager --version v0.16.0 --set installCRDs=true' ubuntu
   fi
 
   # Install all the YAML we've put on S3
@@ -159,7 +162,7 @@ if [[ "${backupenabled}" == "1" ]]; then
 	echo "Polling $${NOTICE_URL} every $${POLL_INTERVAL} second(s)"
 	
 	# To whom it may concern: http://superuser.com/questions/590099/can-i-make-curl-fail-with-an-exitcode-different-than-0-if-the-http-status-code-i
-	while http_status=$(curl -o /dev/null -w '%{http_code}' -sL $${NOTICE_URL}); [ $${http_status} -ne 200 ]; do
+	while http_status=$(curl -o /dev/null -w '%%{http_code}' -sL $${NOTICE_URL}); [ $${http_status} -ne 200 ]; do
 	  echo "Polled termination notice URL. HTTP Status was $${http_status}."
 	  sleep $${POLL_INTERVAL}
 	done
