@@ -161,6 +161,14 @@ resource "aws_s3_bucket" "s3-bucket" {
   bucket_prefix = var.cluster-name
   force_destroy = "true"
 
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm     = "aws:kms"
+      }
+    }
+  }
+
   tags = {
     Environment = var.cluster-name
   }
@@ -174,6 +182,15 @@ resource "aws_s3_bucket" "s3-bucket" {
       days = 7
     }
   }
+}
+
+resource "aws_s3_bucket_public_access_block" "s3-bucket" {
+  bucket = aws_s3_bucket.s3-bucket.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 resource "aws_s3_bucket_object" "external-dns-manifest" {
@@ -266,9 +283,11 @@ data "template_file" "worker-userdata" {
   template = file("worker.sh")
 
   vars = {
-    k8stoken   = local.k8stoken
-    masterIP   = "10.0.100.4"
-    k8sversion = var.kubernetes-version
+    k8stoken            = local.k8stoken
+    masterIP            = "10.0.100.4"
+    k8sversion          = var.kubernetes-version
+    s3bucket            = aws_s3_bucket.s3-bucket.id
+    backupenabled       = var.backup-enabled
   }
 }
 
@@ -450,7 +469,7 @@ resource "aws_iam_policy" "route53-policy" {
   count       = var.external-dns-enabled
   name        = "${var.cluster-name}-route53-policy"
   path        = "/"
-  description = "Polcy for ${var.cluster-name} cluster to allow access to Route 53 for DNS record creation"
+  description = "Policy for ${var.cluster-name} cluster to allow access to Route 53 for DNS record creation"
 
   policy = <<EOF
 {
@@ -564,5 +583,7 @@ resource "aws_autoscaling_group" "worker" {
     value               = "true"
     propagate_at_launch = true
   }
+
+  depends_on = [aws_spot_instance_request.master]
 }
 
