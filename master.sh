@@ -52,9 +52,6 @@ systemctl enable docker
 REGION=$(ec2metadata --availability-zone | rev | cut -c 2- | rev)
 INSTANCE_ID=$(ec2metadata --instance-id)
 aws --region $REGION ec2 create-tags --resources $INSTANCE_ID --tags "Key=Name,Value=${clustername}-master" "Key=Environment,Value=${clustername}" "Key=kubernetes.io/cluster/${clustername},Value=owned"
-# Work around the fact spot instance requests can't configure cpu credit specifications
-# https://github.com/terraform-providers/terraform-provider-aws/issues/6109
-aws --region $REGION ec2 modify-instance-credit-specification --instance-credit-specifications "InstanceId=$INSTANCE_ID,CpuCredits=standard"
 
 # Point kubelet at big ephemeral drive
 mkdir /mnt/kubelet
@@ -135,8 +132,12 @@ if [ -f /tmp/fresh-cluster ]; then
   fi
 
   # Install all the YAML we've put on S3
+  echo "Downloading Kubernetes manifests from s3://${s3bucket}/manifests/..."
   mkdir /tmp/manifests
   aws s3 sync s3://${s3bucket}/manifests/ /tmp/manifests
+
+  echo "Waiting 30 seconds to let cert-manager pods start up completely to avoid initialization errors"
+  sleep 30
   su -c 'kubectl apply -f /tmp/manifests/' ubuntu
 fi
 
@@ -194,3 +195,10 @@ if [[ "${backupenabled}" == "1" ]]; then
   systemctl start check-termination
   systemctl enable check-termination
 fi
+
+# Work around the fact spot instance requests can't configure cpu credit specifications
+# https://github.com/terraform-providers/terraform-provider-aws/issues/6109
+# We do this at the very end so that start up is quick, and we don't get any intermittent timeout
+# errors waiting for services to start
+aws --region $REGION ec2 modify-instance-credit-specification --instance-credit-specifications "InstanceId=$INSTANCE_ID,CpuCredits=standard"
+
