@@ -58,8 +58,8 @@ fi
 # Join the cluster
 for i in {1..50}; do
     if [[ "${backupenabled}" == "1" ]]; then
-        kubeadm join --token=${k8stoken} --discovery-token-ca-cert-hash sha256:$${discovery_hash} --node-name=$(hostname -f) ${masterIP}:6443 && break || sleep 15;
+        kubeadm join --token=${k8stoken} --discovery-token-ca-cert-hash sha256:$${discovery_hash} --node-name=$(curl -s http://169.254.169.254/latest/meta-data/local-hostname) ${masterIP}:6443 && break || sleep 15;
     else
-        kubeadm join --token=${k8stoken} --discovery-token-unsafe-skip-ca-verification --node-name=$(hostname -f) ${masterIP}:6443 && break || sleep 15;
+        kubeadm join --token=${k8stoken} --discovery-token-unsafe-skip-ca-verification --node-name=$(curl -s http://169.254.169.254/latest/meta-data/local-hostname) ${masterIP}:6443 && break || sleep 15;
     fi
 done

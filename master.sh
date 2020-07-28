@@ -66,7 +66,7 @@ bootstrapTokens:
   token: "${k8stoken}"
   ttl: "0"
 nodeRegistration:
-  name: "$(hostname -f)"
+  name: "$(curl -s http://169.254.169.254/latest/meta-data/local-hostname)"
   taints: []
 ---
 apiVersion: kubeadm.k8s.io/v1beta2
