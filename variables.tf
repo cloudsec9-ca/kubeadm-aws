@@ -69,7 +69,7 @@ variable "az" {
 }
 
 variable "kubernetes-version" {
-  default     = "1.18.0"
+  default     = "1.21.12"
   description = "Which version of Kubernetes to install"
 }
 
