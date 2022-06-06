@@ -83,6 +83,11 @@ variable "master-spot-price" {
   description = "The maximum spot bid for the master node"
 }
 
+variable "root-volume-type" {
+  default     = "gp2"
+  description = "The type of EBS volume for the root device, eg standard/gp2/gp3 etc"
+}
+
 variable "worker-instance-type" {
   default     = "t3.micro"
   description = "Which EC2 instance type to use for the worker nodes"

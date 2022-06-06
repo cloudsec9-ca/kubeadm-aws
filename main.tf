@@ -536,6 +536,10 @@ resource "aws_spot_instance_request" "master" {
   wait_for_fulfillment   = true
   private_ip             = "10.0.100.4"
 
+  root_block_device {
+    volume_type = var.root-volume-type
+  }
+
   credit_specification {
     cpu_credits = "standard"
   }
