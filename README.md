@@ -1,7 +1,14 @@
 ## Inexpensive Kubernetes cluster on AWS with kubeadm
 
-**This repo was forked from https://github.com/edtan/kubeadm-aws (originally https://github.com/cablespaghetti/kubeadm-aws). I've got it running, and I intend to bring it up to date slowly.
-Prior to latest fork:
+**This repo was forked from https://github.com/edtan/kubeadm-aws (originally https://github.com/cablespaghetti/kubeadm-aws).
+I'm currently running 1.21.12 as an upgrade from the below 1.18.0 version of Kubernetes.
+Added feature to allow you to set the EBS volume type that the instances boot from.
+
+Also note, there is a workaround Ed Tan added to the master node startup to switch CPU credits from UNLIMITED to STANDARD; the ticket below is CLOSED and I'm unsure if TF actually fixed the issue.
+
+Code works, but still some work to do -- but I'm hoping to push out a 0.22 release which is still somehat supported.
+
+**Prior to latest fork:
 It has been updated to use burstable a t3.small for the control plane node, and t3.micros for the workers.  Kubernetes has been updated from 1.13.4 to 1.18.0, Flannel has been changed to Calico, Helm has been updated from v2 to v3, and the Terraform files have been updated to 0.12 syntax.  There is currently a known bug where the t3.small runs as using unlimited CPU credits - see https://github.com/terraform-providers/terraform-provider-aws/issues/6109**
 
 This repository contains a bunch of Bash and Terraform code which provisions what I believe to be the cheapest possible single master Kubernetes cluster on AWS. You can run a 1 master, 1 worker cluster for somewhere around $6 a month, or just the master node (which can also run pods) for around $3 a month.
