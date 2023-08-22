@@ -6,7 +6,7 @@ Added feature to allow you to set the EBS volume type that the instances boot fr
 
 Also note, there is a workaround Ed Tan added to the master node startup to switch CPU credits from UNLIMITED to STANDARD; the ticket below is CLOSED and I'm unsure if TF actually fixed the issue.
 
-Code works, but still some work to do -- but I'm hoping to push out a 0.22 release which is still somehat supported.
+Code (still) works, but doing some work to do -- but I'm hoping to push out a 0.22 release which is still somehat supported.
 
 **Prior to latest fork:
 It has been updated to use burstable a t3.small for the control plane node, and t3.micros for the workers.  Kubernetes has been updated from 1.13.4 to 1.18.0, Flannel has been changed to Calico, Helm has been updated from v2 to v3, and the Terraform files have been updated to 0.12 syntax.  There is currently a known bug where the t3.small runs as using unlimited CPU credits - see https://github.com/terraform-providers/terraform-provider-aws/issues/6109**
